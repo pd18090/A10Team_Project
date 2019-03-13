@@ -1,20 +1,11 @@
-# -*- coding: utf-8 -*-
-"""
-Spyder Editor
-
-This is a temporary script file.
-"""
 #Majority of code taken from kernel at https://www.kaggle.com/dgawlik/house-prices-eda
 #Modifications by Luke Cotton
 
-#%matplotlib inline
 import csv
 import numpy as np
 import pandas as pd 
-import matplotlib.pyplot as plt
 import scipy.stats as st
 import sklearn.linear_model as linear_model
-import seaborn as sns
 from sklearn.manifold import TSNE
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
@@ -45,9 +36,6 @@ for c in qualitative:
         train[c] = train[c].cat.add_categories(['MISSING'])
         train[c] = train[c].fillna('MISSING')
 
-def boxplot(x, y, **kwargs):
-    sns.boxplot(x=x, y=y)
-    x=plt.xticks(rotation=90)
 f = pd.melt(train, id_vars=['SalePrice'], value_vars=qualitative)
 
 def anova(frame):
@@ -102,14 +90,7 @@ spearman(train, features)
 corr = train[quantitative+['SalePrice']].corr()
 corr = train[qual_encoded+['SalePrice']].corr()
 corr = pd.DataFrame(np.zeros([len(quantitative)+1, len(qual_encoded)+1]), index=quantitative+['SalePrice'], columns=qual_encoded+['SalePrice'])
-        
 
-def pairplot(x, y, **kwargs):
-    ax = plt.gca()
-    ts = pd.DataFrame({'time': x, 'val': y})
-    ts = ts.groupby('time').mean()
-    ts.plot(ax=ax)
-    plt.xticks(rotation=90)
     
 f = pd.melt(train, id_vars=['SalePrice'], value_vars=quantitative+qual_encoded)
 
