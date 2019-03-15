@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-@author: CodingAccount
+@author: bb18115
+
+Majority of the code has been taken from :
+http://www.kaggle.com/dgawlik/house-prices-eda and https://www.kaggle.com/sumana65/stacked-regression
+Modifications by bb18115    
 """
 import csv 
 import numpy as np # Numpy is a library used in array computing
@@ -10,11 +14,15 @@ import matplotlib.pyplot as plt # This is a plotting library used for data visua
 import seaborn as sns # seaborn is another data visualising library used in statistical plotting
 from scipy.stats import skew # Used to provide functions to compute the skewness of a data set and 
 import sklearn.linear_model as linear_model # Linear_model is a library containing various linear models
+from sklearn.ensemble import GradientBoostingRegressor #Contains the Gradient Boosting Regressor
+from sklearn.kernel_ridge import KernelRidge 
+from sklearn.pipeline import make_pipeline 
+from sklearn.preprocessing import RobustScaler
 
 import warnings
 def ignore_warn(*args, **kwargs):
     pass
-warnings.warn = ignore_warn #ignore annoying warning (from sklearn and seaborn)
+warnings.warn = ignore_warn #ignore warning (from sklearn and seaborn)
 
 pd.options.display.max_rows = 1000 # this limits the number of rows displayed to be at most 1000
 pd.options.display.max_columns = 20# this limits the number of columns displayed to be at most 20
@@ -146,22 +154,39 @@ def error(actual, predicted):
     return np.sqrt(np.sum(np.square(actual-predicted))/len(actual))
 
 #Instantiates and initialises the Lasso model with a maximum number of iterations at 10000 and 3 folds for the cross validation technique
-lasso = linear_model.LassoLarsCV(max_iter=10000,cv=3)
-
+lasso = linear_model.LassoLarsCV(max_iter=10000, cv=3)
+KRR = KernelRidge(alpha=0.6, kernel='polynomial', degree=2, coef0=2.5)
+ENet = make_pipeline(RobustScaler(), linear_model.ElasticNet(alpha=0.0005, l1_ratio=.9, random_state=3))
+GBoost = GradientBoostingRegressor(n_estimators=3000, learning_rate=0.05,
+                                   max_depth=4, max_features='sqrt',
+                                   min_samples_leaf=15, min_samples_split=10, 
+                                   loss='huber', random_state =5)
 # This then fits the model using the house features and house prices provided in the training data
 houseFeats = train[train.columns]
 housePrices = y
 lasso.fit(houseFeats, np.log(housePrices))
+pricePred = []
 # The model is then used to predict house prices using the training data
-pricePred = np.exp(lasso.predict(houseFeats))
+pricePred.append(np.exp(lasso.predict(houseFeats)))
 # The error is displayed using the error function defined previously
-print('LassoCV:',error(housePrices, pricePred))
-
+print('LassoCV:',error(housePrices, pricePred[0]))
+KRR.fit(houseFeats, np.log(housePrices))
+ENet.fit(houseFeats, np.log(housePrices))
+pricePred.append(np.exp(KRR.predict(houseFeats)))
+print('KRR:', error(housePrices,pricePred[1]))
+pricePred.append(np.exp(ENet.predict(houseFeats)))
+GBoost.fit(houseFeats, np.log(housePrices))
+print('ENet:', error(housePrices,pricePred[2]))
+pricePred.append(np.exp(GBoost.predict(houseFeats)))
+print('GBoost:', error(housePrices,pricePred[3]))
+avgPricePred = np.mean(pricePred)
+print('SimpleAvg:',error(housePrices,avgPricePred))
 # The house prices are then predicted for the test data using the model and the results are formatted into a csv.
 # This csv can then be submitted to the kaggle competition
 testHouseFeats = test[test.columns]
-pricePred = np.exp(lasso.predict(testHouseFeats))
-with open ('test_predictions.csv','w',newline='') as csvfile:
+pricePred = np.exp(lasso.predict(testHouseFeats))+np.exp(KRR.predict(testHouseFeats))+np.exp(ENet.predict(testHouseFeats))+np.exp(GBoost.predict(testHouseFeats))
+pricePred /= 4
+with open ('test_prEdictions.csv','w',newline='') as csvfile:
     writer = csv.writer(csvfile,delimiter=',',
                         quotechar="'",quoting=csv.QUOTE_MINIMAL)
     writer.writerow(['Id', 'SalePrice'])
